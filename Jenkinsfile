@@ -25,6 +25,12 @@ pipeline {
             }
         }
 
+        stage('Code Coverage') {
+            steps {
+                sh 'mvn jacoco:report'
+            }
+        }
+
         stage('Package') {
             steps {
                 sh 'mvn package -DskipTests'
@@ -43,6 +49,11 @@ pipeline {
             archiveArtifacts(
                 artifacts: 'target/*.jar',
                 fingerprint: true
+            )
+
+            archiveArtifacts(
+                artifacts: 'target/site/jacoco/**',
+                fingerprint: false
             )
 
             junit testResults: 'target/surefire-reports/*.xml',
