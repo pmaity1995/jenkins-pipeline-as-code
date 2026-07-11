@@ -19,15 +19,31 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                sh 'mvn test'
-            }
-        }
+        stage('Parallel Validation') {
+            parallel {
+                stage('Unit Tests') {
+                    steps {
+                        sh 'mvn test'
+                    }
+                }
 
-        stage('Code Coverage') {
-            steps {
-                sh 'mvn jacoco:report'
+                stage('Integration Tests') {
+                    steps {
+                        sh 'mvn verify'
+                    }
+                }
+
+                stage('Code Coverage') {
+                    steps {
+                        sh 'mvn test jacoco:report'
+                    }
+                }
+
+                stage('Code Analysis') {
+                    steps {
+                        sh 'mvn checkstyle:checkstyle'
+                    }
+                }
             }
         }
 
@@ -36,15 +52,14 @@ pipeline {
                 sh 'mvn package -DskipTests'
             }
         }
-
-        stage('Static Code Analysis') {
-            steps {
-                sh 'mvn checkstyle:checkstyle'
-            }
-        }
     }
 
     post {
+        always {
+            junit testResults: 'target/surefire-reports/*.xml',
+                  allowEmptyResults: true
+        }
+
         success {
             archiveArtifacts(
                 artifacts: 'target/*.jar',
@@ -53,21 +68,15 @@ pipeline {
 
             archiveArtifacts(
                 artifacts: 'target/site/jacoco/**',
-                fingerprint: false
+                fingerprint: false,
+                allowEmptyArchive: true
             )
 
-            junit testResults: 'target/surefire-reports/*.xml',
-                  allowEmptyResults: false
-
-            echo 'Pipeline completed successfully.'
+            echo 'Parallel CI pipeline completed successfully.'
         }
 
         failure {
             echo 'Pipeline failed. Check the console output.'
-        }
-
-        always {
-            echo "Final pipeline status: ${currentBuild.currentResult}"
         }
     }
 }
